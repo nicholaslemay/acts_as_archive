@@ -74,11 +74,11 @@ module SpecHelper
   end
   
   def should_delete_records_without_archiving(type)
-    type = "#{type}!"
+    type = "#{type}"
     case type
-    when 'delete!', 'destroy!'
+    when 'delete', 'destroy'
       @record.send type
-    when 'delete_all!', 'destroy_all!'
+    when 'delete_all', 'destroy_all'
       Record.send type
     end
 
@@ -119,7 +119,7 @@ module SpecHelper
     Record.create
   
     Record.migrate_from_acts_as_paranoid
-    Record::Archive.first.deleted_at.to_s.should == time.to_s
+    Record::Archive.first.deleted_at.to_i.should == time.to_i
     Record::Archive.first.id.should == first.id
     Record::Archive.count.should == 1
     Record.count.should == 1
@@ -127,12 +127,12 @@ module SpecHelper
   
   def should_move_records_back_to_original_tables(type)
     case type
-    when 'delete', 'destroy'
-      @record.send type
-      Record::Archive.first.send type
-    when 'delete_all', 'destroy_all'
-      Record.send type
-      Record::Archive.send type
+    when 'restore'
+      @record.archive
+      Record::Archive.first.restore
+    when 'restore_all'
+      Record.archive_all
+      Record::Archive.restore_all
     end
   
     original, archive = all_records
@@ -141,15 +141,10 @@ module SpecHelper
     verify_lengths archive, @zero_lengths
   
     verify_attributes original
-    
-    case type
-    when 'delete', 'delete_all' then
-      original[:record].first.restored_at.is_a?(::Time).should == true
-    when 'destroy', 'destroy_all' then
-      original.values.each do |records|
-        records.each do |record|
-          record.restored_at.is_a?(::Time).should == true
-        end
+
+    original.values.each do |records|
+      records.each do |record|
+        record.restored_at.is_a?(::Time).should == true
       end
     end
   end
