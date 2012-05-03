@@ -20,25 +20,9 @@ unless FrameworkFixture.framework
         should_migrate_record_and_preserve_deleted_at
       end
     end
-    
-    describe :restore_all do
-      it "should emulate delete_all" do
-        should_emulate_delete_all
-      end
-    end
-  
+
     %w(delete delete_all destroy destroy_all).each do |type|
-      describe type do
-        it "should move records to archive tables" do
-          should_move_records_to_archive_tables(type)
-        end
-      
-        it "should move records back to original tables" do
-          should_move_records_back_to_original_tables(type)
-        end
-      end
-      
-      describe "#{type}!" do
+      describe "#{type}" do
         it "should delete records without archiving" do
           should_delete_records_without_archiving(type)
         end
@@ -55,59 +39,50 @@ if FrameworkFixture.framework
     def app
       FrameworkFixture.app.call
     end
-    
+
     before(:each) do
       before_each true, false
     end
-  
+
     it "should have a pulse" do
       get "/pulse"
       last_response.body.should == '1'
     end
-    
+
     it "should have valid schema" do
       get "/should_have_valid_schema_action"
       last_response.body.should == '1'
     end
-    
+
     it "should create records" do
       get "/should_create_records_action"
       last_response.body.should == '1'
     end
-    
+
     describe :migrate_from_acts_as_paranoid do
       it "should migrate record and preserve deleted_at" do
         get "/should_migrate_record_and_preserve_deleted_at_action"
         last_response.body.should == '1'
       end
     end
-    
-    describe :restore_all do
-      it "should emulate delete_all" do
-        get "/should_emulate_delete_all_action"
-        last_response.body.should == '1'
-      end
-    end
-  
+
     %w(delete delete_all destroy destroy_all).each do |type|
-      describe type do
-        it "should move records to archive tables" do
-          get "/should_move_records_to_archive_tables_action", :type => type
-          last_response.body.should == '1'
-        end
-      
-        it "should move records back to original tables" do
-          get "/should_move_records_back_to_original_tables_action", :type => type
-          last_response.body.should == '1'
-        end
-      end
-      
-      describe "#{type}!" do
+      describe "#{type}" do
         it "should delete records without archiving" do
           get "/should_delete_records_without_archiving_action", :type => type
           last_response.body.should == '1'
         end
       end
     end
+
+    describe 'perform archival' do
+
+      it "should move records to archive tables" do
+        get "/should_move_records_to_archive_tables_action", :type => 'perform_archival'
+        last_response.body.should == '1'
+      end
+
+    end
+
   end
 end

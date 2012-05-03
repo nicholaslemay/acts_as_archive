@@ -1,0 +1,25 @@
+common: &common
+  adapter: mysql
+  pool: 5
+  timeout: 5000
+  encoding: utf8
+  reconnect: false
+  username: root
+  password:
+  socket: /tmp/mysql.sock
+  host: 127.0.0.1
+
+development:
+  <<: *common
+  database: acts_as_archive_development
+
+production:
+  <<: *common
+  database: acts_as_archive_production
+
+test: &test
+  <<: *common
+  database: acts_as_archive_test
+
+pyrite:
+  <<: *test

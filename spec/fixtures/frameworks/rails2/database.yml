@@ -1,12 +1,12 @@
 test:
   adapter: mysql
-  database: acts_as_archive
+  database: acts_as_archive_test
   username: root
   password: 
   host: localhost
 development:
   adapter: mysql
-  database: acts_as_archive
+  database: acts_as_archive_development
   username: root
   password: 
   host: localhost

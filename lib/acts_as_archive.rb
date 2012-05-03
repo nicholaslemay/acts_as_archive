@@ -42,8 +42,8 @@ class ActsAsArchive
       end
     end
     
-    def load_from_yaml(root)
-      if File.exists?(yaml = "#{root}/config/acts_as_archive.yml")
+    def load_from_yaml(root, filename = "acts_as_archive.yml")
+      if File.exists?(yaml = "#{root}/config/#{filename}")
         YAML.load(File.read(yaml)).each do |klass, config|
           klass = eval(klass) rescue nil
           if klass
@@ -79,7 +79,10 @@ class ActsAsArchive
     def self.included(base)
       unless base.included_modules.include?(InstanceMethods)
         base.extend ClassMethods
+        base.send :include, ClassMethodsOverrides
         base.send :include, InstanceMethods
+        base.send :overwrite_destroy
+        base.send :overwrite_delete
       end
     end
 
@@ -147,15 +150,7 @@ class ActsAsArchive
         config[:to] = klass
         config[:options] = options
       end
-      
-      def delete_all!(*args)
-        ActsAsArchive.disable { self.delete_all(*args) }
-      end
-      
-      def destroy_all!(*args)
-        ActsAsArchive.disable { self.destroy_all(*args) }
-      end
-      
+
       def migrate_from_acts_as_paranoid
         time = Benchmark.measure do
           ActsAsArchive.find(self).each do |config|
@@ -171,21 +166,102 @@ class ActsAsArchive
         $stdout.puts "-- #{self}.migrate_from_acts_as_paranoid"
         $stdout.puts "   -> #{"%.4fs" % time.real}"
       end
-      
-      def restore_all(*args)
-        ActsAsArchive.deprecate "#{self}.restore_all is deprecated, please use #{self}.delete_all."
-        self.delete_all *args
+
+    end
+
+    module ClassMethodsOverrides
+      def self.included(base)
+        base.instance_eval do
+          class << self
+            alias_method :original_destroy_all, :destroy_all
+            alias_method :original_delete_all, :delete_all
+
+            def delete_all(*args)
+              if ActsAsArchive.disabled
+                original_delete_all
+              else
+                ActsAsArchive.disable { original_delete_all }
+              end
+            end
+
+            def destroy_all(*args)
+              if ActsAsArchive.disabled
+                original_destroy_all
+              else
+                ActsAsArchive.disable { original_destroy_all }
+              end
+            end
+
+            def archive_all(conditions = nil)
+              find(:all, :conditions => conditions).each { |object| object.perform_archival }
+            end
+          end
+        end
       end
     end
-    
+
+
     module InstanceMethods
-      def delete!(*args)
-        ActsAsArchive.disable { self.delete(*args) }
+      def self.included(base)
+
+        base.instance_eval do
+
+          def method_added(name)
+            overwrite_destroy if name == :destroy
+            overwrite_delete if name == :delete
+          end
+
+          def overwrite_destroy
+            class_eval do
+              unless method_defined?(:custom_destroy)
+                define_method(:custom_destroy) do
+                  if ActsAsArchive.disabled
+                    original_destroy
+                  else
+                    ActsAsArchive.disable { original_destroy}
+                  end
+
+                end
+                if instance_method(:destroy) != instance_method(:custom_destroy)
+                  alias_method :original_destroy, :destroy
+                  alias_method :destroy, :custom_destroy
+                end
+              end
+
+            end
+          end
+
+          def overwrite_delete
+            class_eval do
+              unless method_defined?(:custom_delete)
+                define_method(:custom_delete) do
+                  if ActsAsArchive.disabled
+                    original_delete
+                  else
+                    ActsAsArchive.disable {original_delete}
+                  end
+
+                end
+
+                if instance_method(:delete) != instance_method(:custom_delete)
+                  alias_method :original_delete, :delete
+                  alias_method :delete, :custom_delete
+                end
+
+              end
+            end
+          end
+
+        end
+
+        base.class_eval do
+          def perform_archival(*args)
+            original_destroy
+          end
+        end
       end
-      
-      def destroy!(*args)
-        ActsAsArchive.disable { self.destroy(*args) }
-      end
+
+
     end
   end
   
