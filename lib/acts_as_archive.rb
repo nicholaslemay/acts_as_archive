@@ -178,17 +178,17 @@ class ActsAsArchive
 
             def delete_all(*args)
               if ActsAsArchive.disabled
-                original_delete_all
+                original_delete_all(*args)
               else
-                ActsAsArchive.disable { original_delete_all }
+                ActsAsArchive.disable { original_delete_all(*args) }
               end
             end
 
             def destroy_all(*args)
               if ActsAsArchive.disabled
-                original_destroy_all
+                original_destroy_all(*args)
               else
-                ActsAsArchive.disable { original_destroy_all }
+                ActsAsArchive.disable { original_destroy_all(*args) }
               end
             end
 
